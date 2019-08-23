@@ -27,7 +27,7 @@ static const char * filepath_to_filename(const char * path)
 static int print_usage(const char * argv0)
 {
     argv0 = filepath_to_filename(argv0);
-    fprintf(stderr, "%s - convert binary file to png\n", argv0);
+    fprintf(stderr, "%s - convert binary file to greyscale png\n", argv0);
     fprintf(stderr, "Usage: %s input output.png\n", argv0);
     return 1;
 }
@@ -97,7 +97,7 @@ static int my_utf8_main(int argc, char ** argv)
     if(!binary)
     {
         free(buff);
-        fprintf(stderr, "can't open file\n");
+        fprintf(stderr, "can't open file '%s'\n", argv[1]);
         return 1;
     }
 
@@ -106,18 +106,20 @@ static int my_utf8_main(int argc, char ** argv)
     if(read > buffsize)
     {
         free(buff);
-        fprintf(stderr, "file too big\n");
+        fprintf(stderr, "file '%s' is too big (over %.1f MiB)\n", argv[1], buffsize / (1024.0 * 1024.0));
         return 1;
     }
 
     if(calculate_image_sizes(read, &x, &y))
     {
-        stbi_write_png(argv[2], x, y, 1, buff, 0); /* TODO: check this*/
+        if(!stbi_write_png(argv[2], x, y, 1, buff, 0))
+            fprintf(stderr, "stbi_write_png to file '%s' failed\n", argv[2]);
     }
     else
     {
         fprintf(stderr, "failed to calculate image sizes\n");
     }
+
     free(buff);
     return 0;
 }
