@@ -38,7 +38,7 @@ static int calculate_image_sizes(size_t s, int * x, int * y)
 
     for(i = 4; i < 5000; i = i * 2)
     {
-        for(j = i / 2; j <= (i + i / 2); ++j)
+        for(j = i / 2; j <= (i + i / 2 + i / 4); ++j)
         {
             if(s < (size_t)(i * j))
             {
