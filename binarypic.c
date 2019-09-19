@@ -75,6 +75,18 @@ static FILE * my_utf8_fopen_rb(const char * fname)
 #endif
 }
 
+static unsigned char contrasting(unsigned char c)
+{
+    return ~c;
+}
+
+static void set_contrasting_padding(void * buff, int good, int buffsize)
+{
+    unsigned char * b = (unsigned char*)buff;
+    unsigned char p = (good > 0) ? contrasting(b[good - 1]) : 0xff;
+    memset(b + good, p, buffsize - good);
+}
+
 static int my_utf8_main(int argc, char ** argv)
 {
     void * buff;
@@ -112,6 +124,7 @@ static int my_utf8_main(int argc, char ** argv)
 
     if(calculate_image_sizes(read, &x, &y))
     {
+        set_contrasting_padding(buff, (int)read, x * y);
         if(!stbi_write_png(argv[2], x, y, 1, buff, 0))
             fprintf(stderr, "stbi_write_png to file '%s' failed\n", argv[2]);
     }
