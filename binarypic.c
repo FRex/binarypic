@@ -2,6 +2,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_SIMD
+#define STB_IMAGE_STATIC
+#define STBI_WINDOWS_UTF8
+#include "stb_image.h"
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_STATIC
 #define STBI_WINDOWS_UTF8
@@ -58,10 +64,10 @@ static int calculate_image_sizes(size_t s, int * x, int * y)
 #include <Windows.h>
 #endif
 
-static FILE * my_utf8_fopen_rb(const char * fname)
+static FILE * my_utf8_fopen_binary(const char * fname, int write)
 {
 #ifndef _MSC_VER
-    return fopen(fname, "rb");
+    return fopen(fname, write ? "wb" : "rb");
 #else
     FILE * ret;
     const int utf16chars = strlen(fname) + 5;
@@ -70,7 +76,7 @@ static FILE * my_utf8_fopen_rb(const char * fname)
         return NULL;
 
     MultiByteToWideChar(CP_UTF8, 0, fname, -1, fname16, utf16chars);
-    ret = _wfopen(fname16, L"rb");
+    ret = _wfopen(fname16, write ? L"wb" : L"rb");
     free(fname16);
     return ret;
 #endif
@@ -103,7 +109,7 @@ static int encode(const char * ifile, const char * ofile)
         return 1;
     }
 
-    binary = my_utf8_fopen_rb(ifile);
+    binary = my_utf8_fopen_binary(ifile, 0);
     if(!binary)
     {
         free(buff);
@@ -136,10 +142,57 @@ static int encode(const char * ifile, const char * ofile)
     return 0;
 }
 
+static int size_without_padding(const unsigned char * pixels, int size)
+{
+    unsigned char last;
+
+    if(size == 0)
+        return 0;
+
+    last = pixels[size - 1];
+    while(size > 0 && pixels[size - 1] == last)
+        --size;
+
+    return size;
+}
+
 static int decode(const char * ifile, const char * ofile)
 {
-    printf("decode(\"%s\", \"%s\");\n", ifile, ofile);
-    return 0;
+    int w, h, comp, datasize;
+    unsigned char * grey;
+    size_t written;
+    FILE * binary;
+
+    grey = stbi_load(ifile, &w, &h, &comp, 0);
+    if(grey == NULL)
+    {
+        fprintf(stderr, "stbi_load returned NULL\n");
+        return 1;
+    }
+
+    if(comp != 1)
+    {
+        fprintf(stderr, "this isn't a greyscale image\n");
+        stbi_image_free(grey);
+        return 1;
+    }
+
+    binary = my_utf8_fopen_binary(ofile, 1);
+    if(!binary)
+    {
+        fprintf(stderr, "can't open file '%s'\n", ofile);
+        stbi_image_free(grey);
+        return 1;
+    }
+
+    datasize = size_without_padding(grey, w * h);
+    written = fwrite(grey, 1, datasize, binary);
+    if(written != datasize)
+        fprintf(stderr, "failed to fwrite all %d vs %d\n", (int)written, datasize);
+
+    stbi_image_free(grey);
+    fclose(binary);
+    return (written == datasize) ? 0 : 1;
 }
 
 static int my_utf8_main(int argc, char ** argv)

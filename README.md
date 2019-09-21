@@ -1,7 +1,13 @@
 # binarypic
 
-Small program to convert a binary file to grayscale 1-byte-1-pixel `png` using
-[stb_image_write](https://github.com/nothings/stb).
+Small program to convert a binary file to grayscale 1-byte-1-pixel `png` and
+back using [stb_image and stb_image_write](https://github.com/nothings/stb).
+
+To allow for converting back the image is padded to a rectangle with some pixel
+that is different value than last valid one (so the decoding can strip it). Even
+images of 'nice' size like 16 byte binary file that'd be a 4x4 image with no
+padding will be padded so decoder always knows that all trailing pixels of same
+value are padding and not data. This allows for a byte perfect roundtrip.
 
 The idea for this program appeared when I ran across a multi-meg file that had
 most of its bytes set to 0 but due to its size even tiny font and a fullscreen
