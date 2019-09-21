@@ -27,8 +27,9 @@ static const char * filepath_to_filename(const char * path)
 static int print_usage(const char * argv0)
 {
     argv0 = filepath_to_filename(argv0);
-    fprintf(stderr, "%s - convert binary file to greyscale png\n", argv0);
+    fprintf(stderr, "%s - convert binary file to greyscale png or back\n", argv0);
     fprintf(stderr, "Usage: %s input output.png\n", argv0);
+    fprintf(stderr, "Usage: %s -d input.png output\n", argv0);
     return 1;
 }
 
@@ -87,16 +88,13 @@ static void set_contrasting_padding(void * buff, int good, int buffsize)
     memset(b + good, p, buffsize - good);
 }
 
-static int my_utf8_main(int argc, char ** argv)
+static int encode(const char * ifile, const char * ofile)
 {
     void * buff;
     size_t buffsize = 4096 * 4096;
     size_t read;
     FILE * binary;
     int x, y;
-
-    if(argc < 3)
-        return print_usage(argv[0]);
 
     buff = calloc(buffsize + 1, 1);
     if(!buff)
@@ -105,11 +103,11 @@ static int my_utf8_main(int argc, char ** argv)
         return 1;
     }
 
-    binary = my_utf8_fopen_rb(argv[1]);
+    binary = my_utf8_fopen_rb(ifile);
     if(!binary)
     {
         free(buff);
-        fprintf(stderr, "can't open file '%s'\n", argv[1]);
+        fprintf(stderr, "can't open file '%s'\n", ifile);
         return 1;
     }
 
@@ -118,15 +116,16 @@ static int my_utf8_main(int argc, char ** argv)
     if(read > buffsize)
     {
         free(buff);
-        fprintf(stderr, "file '%s' is too big (over %.1f MiB)\n", argv[1], buffsize / (1024.0 * 1024.0));
+        fprintf(stderr, "file '%s' is too big (over %.1f MiB)\n", ifile, buffsize / (1024.0 * 1024.0));
         return 1;
     }
 
-    if(calculate_image_sizes(read, &x, &y))
+    /* read + 1 to always get at least one byte of padding! */
+    if(calculate_image_sizes(read + 1, &x, &y))
     {
         set_contrasting_padding(buff, (int)read, x * y);
-        if(!stbi_write_png(argv[2], x, y, 1, buff, 0))
-            fprintf(stderr, "stbi_write_png to file '%s' failed\n", argv[2]);
+        if(!stbi_write_png(ofile, x, y, 1, buff, 0))
+            fprintf(stderr, "stbi_write_png to file '%s' failed\n", ofile);
     }
     else
     {
@@ -135,6 +134,23 @@ static int my_utf8_main(int argc, char ** argv)
 
     free(buff);
     return 0;
+}
+
+static int decode(const char * ifile, const char * ofile)
+{
+    printf("decode(\"%s\", \"%s\");\n", ifile, ofile);
+    return 0;
+}
+
+static int my_utf8_main(int argc, char ** argv)
+{
+    if(argc == 3)
+        return encode(argv[1], argv[2]);
+
+    if(argc == 4 && 0 == strcmp(argv[1], "-d"))
+        return decode(argv[2], argv[3]);
+
+    return print_usage(argv[0]);
 }
 
 #ifndef _MSC_VER
