@@ -13,6 +13,10 @@
 #define STBI_WINDOWS_UTF8
 #include "stb_image_write.h"
 
+static int my_utf8_main(int argc, char ** argv);
+#define BLA_WMAIN_FUNC my_utf8_main
+#include "blawmain.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -34,6 +38,7 @@ static int print_usage(const char * argv0)
 {
     argv0 = filepath_to_filename(argv0);
     fprintf(stderr, "%s - convert binary file to greyscale png or back\n", argv0);
+    fprintf(stderr, "Info : BLA_WMAIN_USING_WMAIN_BOOLEAN = %d\n", BLA_WMAIN_USING_WMAIN_BOOLEAN);
     fprintf(stderr, "Usage: %s input output.png\n", argv0);
     fprintf(stderr, "Usage: %s -d input.png output\n", argv0);
     return 1;
@@ -58,11 +63,6 @@ static int calculate_image_sizes(size_t s, int * x, int * y)
 
     return 0;
 }
-
-#ifdef _MSC_VER
-/*for MultiByteToWideChar */
-#include <Windows.h>
-#endif
 
 static FILE * my_utf8_fopen_binary(const char * fname, int write)
 {
@@ -205,51 +205,3 @@ static int my_utf8_main(int argc, char ** argv)
 
     return print_usage(argv[0]);
 }
-
-#ifndef _MSC_VER
-
-int main(int argc, char ** argv)
-{
-    return my_utf8_main(argc, argv);
-}
-
-#else
-
-/* for wcslen */
-#include <wchar.h>
-
-int wmain(int argc, wchar_t ** argv)
-{
-    int i, retcode;
-    char ** utf8argv = (char **)calloc(argc + 1, sizeof(char*));
-    if(!utf8argv)
-    {
-        fputs("calloc error in wmain\n", stderr);
-        return 1;
-    }
-
-    retcode = 0;
-    for(i = 0; i < argc; ++i)
-    {
-        const size_t utf8len = wcslen(argv[i]) * 3 + 10;
-        utf8argv[i] = (char*)calloc(utf8len, 1);
-        if(!utf8argv[i])
-        {
-            retcode = 1;
-            fputs("calloc error in wmain\n", stderr);
-            break;
-        }
-        stbiw_convert_wchar_to_utf8(utf8argv[i], utf8len, argv[i]);
-    }
-
-    if(retcode == 0)
-        retcode = my_utf8_main(argc, utf8argv);
-
-    for(i = 0; i < argc; ++i)
-        free(utf8argv[i]);
-
-    free(utf8argv);
-    return retcode;
-}
-
-#endif /* _MSC_VER */
